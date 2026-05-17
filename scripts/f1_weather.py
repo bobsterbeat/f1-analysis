@@ -124,14 +124,15 @@ temp_trend = (slick_dry.groupby(["TempBin","Compound"])["LapDelta"]
 brazil = fastf1.get_session(YEAR, "Brazil", "R")
 brazil.load(telemetry=False, messages=False)
 bz_laps = brazil.laps.copy()
-bz_laps = bz_laps[bz_laps["LapTime"].notna()].copy()
+# IsAccurate filters out safety car laps and laps under yellow — real racing pace only
+bz_laps = bz_laps[(bz_laps["LapTime"].notna()) & (bz_laps["IsAccurate"]==True)].copy()
 bz_laps["LapTimeSec"] = bz_laps["LapTime"].dt.total_seconds()
 bz_w = brazil.weather_data[["Time","TrackTemp","Rainfall"]].copy()
 bz_laps = pd.merge_asof(bz_laps.sort_values("LapStartTime"),
                          bz_w.rename(columns={"Time":"LapStartTime"}),
                          on="LapStartTime", direction="nearest")
-# Field median per lap
-bz_med = (bz_laps[bz_laps["LapTime"].notna()]
+# Field median per lap (racing laps only — safety car laps excluded)
+bz_med = (bz_laps
            .groupby("LapNumber")
            .agg(MedianSec=("LapTimeSec","median"),
                 Rain=("Rainfall","max"),
@@ -231,7 +232,7 @@ ax3b.plot(bz_med["LapNumber"], bz_med["TrackTemp"],
 ax3.set_xlabel("Lap Number")
 ax3.set_ylabel("Median lap time (seconds)", color=NAVY)
 ax3b.set_ylabel("Track temperature (°C)", color=DRY)
-ax3.set_title("2024 Brazilian GP — Rain Transition\n(blue shading = rainfall recorded)", fontsize=11)
+ax3.set_title("2024 Brazilian GP — Rain Transition\n(racing laps only — safety car laps excluded)", fontsize=11)
 
 rain_patch = mpatches.Patch(color=WET, alpha=0.3, label="Rainfall")
 lap_line   = mpatches.Patch(color=NAVY, label="Lap time")

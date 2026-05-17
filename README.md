@@ -1,26 +1,86 @@
-# F1 Telemetry Analysis
+# F1 Telemetry Analysis — 2024 Season
 
-Data science project using the [FastF1](https://docs.fastf1.dev/) Python library to analyse Formula 1 race telemetry.
+> **Using real Formula 1 timing and telemetry data to answer engineering questions about what actually drives lap time.**
 
-## What it does
+---
 
-**`scripts/f1_overview.py`** — Data exploration & visualisation
-- Lap times across a full race
-- Tyre degradation by stint
-- Speed trace comparison between two drivers on their fastest lap
-- Throttle and braking input trace
+## 📄 [Read the Full Report (PDF)](outputs/F1_Full_Report.pdf)
 
-**`scripts/f1_prediction.py`** — Machine learning model
-- Trains a Gradient Boosting model across multiple races
-- Target: seconds above/below each circuit's median lap time (removes circuit-to-circuit baseline gap so the model learns degradation, not geography)
-- Features: tyre life, compound, fuel load, track temp, air temp, driver, lap number, compound×tyre life interaction
-- Outputs: feature importance, actual vs predicted, error distribution, per-compound degradation projection
+*All five analyses with charts, findings tables, and interpretation — readable directly in your browser.*
+
+---
+
+## Key Findings at a Glance
+
+| Finding | Result |
+|---|---|
+| **What drives lap time within a race?** | Fuel burn (22%) and lap number (21%) — not tyres |
+| **Car vs driver split** | 97% car, 3% driver — across 10 teams, 4 races |
+| **Biggest teammate gap** | Hulkenberg beats Magnussen by **0.55s** in identical machinery |
+| **Closest teammates** | Russell vs Hamilton — **0.004s** across four races |
+| **Best wet weather driver** | Gasly — gains **12 positions** in wet vs dry ranking |
+| **Worst wet weather driver** | Leclerc — loses **13 positions** in wet conditions |
+| **Fastest car** | Red Bull — **1.04s faster** than field median (driver effects removed) |
+| **Model accuracy** | Predicts lap time within **±0.38 seconds** (R² = 0.78) |
+
+---
+
+## Analysis 1 — Telemetry Overview
+
+*Lap times, tyre degradation, speed traces and driver inputs — Bahrain GP, VER vs HAM*
+
+![Telemetry Overview](outputs/f1_overview.png)
+
+---
+
+## Analysis 2 — Lap Time Prediction Model
+
+*Gradient Boosting model trained on 3,482 laps across 5 races. Fuel load (22%) and lap number (21%) dominate — tyre life contributes only 3.3%.*
+
+![Prediction Model](outputs/f1_prediction.png)
+
+**Why fuel matters more than tyres:** A car at race start carries ~110 kg of fuel burning at ~1.6 kg/lap. That weight reduction alone accounts for 5–7 seconds of lap time improvement across a race — more than any tyre effect. Strategy engineers are simultaneously managing a car getting lighter (faster) and tyres wearing out (slower).
+
+---
+
+## Analysis 3 — Driver vs Car
+
+*Same car, same race: any gap between teammates is the driver, not the machinery.*
+
+![Driver vs Car](outputs/f1_driver_vs_car.png)
+
+**97% of lap time variation is the car. 3% is the driver.** This doesn't mean drivers are unimportant — a 0.5s teammate gap over a season is worth millions in prize money and multiple championship positions. It means the most impactful decision a driver makes is which contract they sign.
+
+---
+
+## Analysis 4 — Weather & Temperature
+
+*Three wet races (Canada, Britain, Brazil), full track temperature range from 17°C (Las Vegas, night race) to 55°C (Italy).*
+
+![Weather Analysis](outputs/f1_weather.png)
+
+**Tyre grip window:** 38–45°C track surface temperature is where all three slick compounds perform best. Below 30°C, tyres can't generate heat. Above 50°C, softs degrade rapidly. Las Vegas is a special case — a night race in November Nevada desert, track surface barely above 17°C.
+
+---
+
+## Analysis 5 — Sector Time Analysis
+
+*Where each driver actually makes their time. 15,898 laps across 16 circuits.*
+
+![Sector Analysis](outputs/f1_sectors.png)
+
+**Verstappen vs Norris:** VER is fastest in Sector 1 (high-speed corners); NOR leads in Sector 3 (braking and traction). This reflects real car characteristics — Red Bull's aerodynamic dominance in fast corners vs McLaren's mechanical grip advantage in slow/technical sections.
+
+**Gasly's +12 wet ranking gain** comes almost entirely from Sector 2 — medium-speed technical corners where smooth throttle and brake control under low grip separates drivers. Leclerc's -13 drop is concentrated in exactly the same sector type.
+
+---
 
 ## Setup
 
 ```bash
-python3 -m venv venv
-source venv/bin/activate
+git clone https://github.com/bobsterbeat/f1-analysis.git
+cd f1-analysis
+python3 -m venv venv && source venv/bin/activate
 pip install -r requirements.txt
 ```
 
@@ -28,42 +88,22 @@ pip install -r requirements.txt
 
 ```bash
 cd scripts
-
-# Telemetry overview (change YEAR, RACE, DRIVER_A/B at top of file)
-python3 f1_overview.py
-
-# Prediction model (change RACES list at top of file)
-python3 f1_prediction.py
+python3 f1_overview.py        # telemetry explorer  (edit YEAR, RACE, DRIVER_A/B)
+python3 f1_prediction.py      # lap time model      (edit RACES list)
+python3 f1_driver_vs_car.py   # driver vs car
+python3 f1_weather.py         # weather analysis
+python3 f1_sectors.py         # sector breakdown
 ```
 
-Charts save to `outputs/`. Race data is cached in `cache/` after first download.
+Data downloads automatically via FastF1 and caches locally. First run takes a few minutes per race; subsequent runs are instant.
 
-## Model results (2024 — Bahrain, Saudi Arabia, Australia, Japan)
+---
 
-| Metric | Value |
-|--------|-------|
-| MAE | 0.38 sec |
-| R² | 0.78 |
+## Tools
 
-**Top predictors of lap time variation within a race:**
-
-| Feature | Importance | Why |
-|---------|-----------|-----|
-| Fuel load | 22% | Car is ~110 kg heavier at race start; burns ~1.6 kg/lap |
-| Lap number | 21% | Correlated with fuel, safety cars, track evolution |
-| Air temp | 18% | Affects tyre operating window |
-| Track temp | 15% | Surface grip changes through the race |
-| Driver | 10% | Pace differences and tyre management style |
-| Compound | 6% | SOFT vs HARD baseline delta |
-| Tyre life | 3% | Degradation effect (smaller than fuel within a stint) |
-
-## Key findings
-
-- **Fuel burn dominates within-race lap time variation** — bigger effect than tyre degradation
-- **Tyre compound matters more for strategy** than for raw within-stint lap time
-- The out-lap (lap 1 of every stint) is genuinely slow for all compounds — cold rubber on cold tarmac
-- SOFT tyres have limited real data beyond ~15 laps (teams rarely run them that long), so the model extrapolates noisily past that point
-
-## Data source
-
-FastF1 pulls official F1 timing and telemetry data. All data is publicly available and cached locally.
+| Tool | Role |
+|---|---|
+| [FastF1](https://docs.fastf1.dev/) | Official F1 timing & telemetry data |
+| pandas / numpy | Data processing |
+| matplotlib | Charts |
+| scikit-learn | Gradient Boosting model |
